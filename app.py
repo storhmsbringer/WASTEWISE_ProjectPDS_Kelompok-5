@@ -1,6 +1,5 @@
 import html
 import re
-from turtle import left
 import warnings
 from pathlib import Path
 
