@@ -23,7 +23,7 @@ from statsmodels.stats.diagnostic import het_breuschpagan, lilliefors, linear_re
 warnings.filterwarnings("ignore")
 
 RANDOM_STATE = 42
-DATA_CANDIDATES = [Path(__file__).parent / n for n in ("Dataset_Sampah_Jawa_Tengah.xlsx")]
+DATA_CANDIDATES = [Path(__file__).parent / "Dataset_Sampah_Jawa_Tengah.xlsx"]
 GEOJSON_PATH = Path(__file__).parent / "jawa_tengah_kabkota.geojson"
 
 # Palette
@@ -1503,10 +1503,10 @@ with st.sidebar:
     )
     page = st.radio("Navigasi", PAGES, label_visibility="collapsed")
 
-    source = next((p for p in DATA_CANDIDATES if p.exists()), None)
+    source = next((p for p in DATA_CANDIDATES if p.is_file()), None)
     if source is None:
         st.write("")
-        source = st.file_uploader("Unggah Dataset_Jawa_Tengah.xlsx", type=["xlsx"])
+        source = st.file_uploader("Unggah Dataset_Sampah_Jawa_Tengah.xlsx", type=["xlsx"])
 
     st.markdown(
         '<div class="ww-sidebar-spacer"></div>'
@@ -1517,7 +1517,7 @@ with st.sidebar:
 
 if source is None:
     st.error(
-        "Berkas Dataset_Jawa_Tengah.xlsx tidak ditemukan. Letakkan file tersebut di folder yang sama "
+        "Berkas Dataset_Sampah_Jawa_Tengah.xlsx tidak ditemukan. Letakkan file tersebut di folder yang sama "
         "dengan app.py, atau unggah lewat panel di sidebar."
     )
     st.stop()
