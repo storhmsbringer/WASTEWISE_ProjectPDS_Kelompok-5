@@ -23,7 +23,7 @@ from statsmodels.stats.diagnostic import het_breuschpagan, lilliefors, linear_re
 warnings.filterwarnings("ignore")
 
 RANDOM_STATE = 42
-DEFAULT_DATA_PATH = Path(__file__).parent / "Dataset_Sampah_Jawa_Tengah.xlsx"
+DEFAULT_DATA_PATH = Path(__file__).parent / "Dataset_Jawa_Tengah.xlsx"
 GEOJSON_PATH = Path(__file__).parent / "jawa_tengah_kabkota.geojson"
 
 # Palette
