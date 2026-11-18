@@ -23,7 +23,7 @@ from statsmodels.stats.diagnostic import het_breuschpagan, lilliefors, linear_re
 warnings.filterwarnings("ignore")
 
 RANDOM_STATE = 42
-DEFAULT_DATA_PATH = Path(__file__).parent / "Dataset_Jawa_Tengah.xlsx"
+DATA_CANDIDATES = [Path(__file__).parent / n for n in ("Dataset_Jawa_Tengah.xlsx", "Dataset_Sampah_Jawa_Tengah.xlsx")]
 GEOJSON_PATH = Path(__file__).parent / "jawa_tengah_kabkota.geojson"
 
 # Palette
@@ -238,10 +238,49 @@ def profil_kode(frame, med):
 
 # Pipeline data (mengikuti notebook final):
 # audit -> PCA (Kaiser + varimax) -> model Management Gap (LORO) -> K-Means -> WIPI -> rekomendasi 8 kriteria
+REQUIRED_COLS = ["Tahun", "KabKota", "Population", "Timbulan", "Kelola", "MR", "WGPC", "RR", "Recycle_Success",
+                 "UWR", "Unmanaged_Waste", "Domestic", "Organic", "Recycle", "Lainnya"]
+
+
+def _norm(c):
+    return re.sub(r"[^a-z0-9]", "", str(c).lower())
+
+
+COL_ALIAS = {_norm(c): c for c in REQUIRED_COLS + ["Density", "Comercial", "Public"]}
+COL_ALIAS.update({"kabupatenkota": "KabKota", "kabkot": "KabKota", "wilayah": "KabKota", "year": "Tahun",
+                  "commercial": "Comercial", "recyclesucces": "Recycle_Success"})
+
+
+class DatasetError(Exception):
+    pass
+
+
+def read_dataset(source):
+    # Cari sheet + baris header yang memuat kolom Tahun dan KabKota (nama kolom tidak peka huruf/spasi/garis miring)
+    sheets = pd.read_excel(source, sheet_name=None, header=None)
+    ditemukan = []
+    for nama, raw in sheets.items():
+        for h in range(min(6, len(raw))):
+            cols = [COL_ALIAS.get(_norm(c), str(c).strip()) for c in raw.iloc[h]]
+            if "Tahun" in cols and "KabKota" in cols:
+                kurang = [c for c in REQUIRED_COLS if c not in cols]
+                if kurang:
+                    raise DatasetError(
+                        f"Sheet '{nama}' ditemukan, tetapi kolom berikut tidak ada: {', '.join(kurang)}. "
+                        f"Kolom yang terbaca: {', '.join(map(str, cols))}. Pastikan dataset adalah versi yang sama "
+                        f"dengan notebook (kolom Tahun, KabKota, Population, Timbulan, Kelola, dst.)."
+                    )
+                df = raw.iloc[h + 1:].copy()
+                df.columns = cols
+                return df.loc[:, ~df.columns.duplicated()]
+        ditemukan.append(f"'{nama}': {', '.join(str(c) for c in raw.iloc[0].tolist()[:8])}")
+    raise DatasetError("Kolom Tahun dan KabKota tidak ditemukan di sheet mana pun. Isi baris pertama tiap sheet: "
+                       + " | ".join(ditemukan))
+
+
 @st.cache_data(show_spinner="Memproses data timbulan dan pengelolaan sampah...")
 def compute_wastewise(source) -> dict:
-    df = pd.read_excel(source)
-    df.columns = [str(c).strip() for c in df.columns]
+    df = read_dataset(source)
     df = df.dropna(subset=["Tahun", "KabKota"]).copy()
     df["KabKota"] = df["KabKota"].astype(str).str.strip()
     df["Tahun"] = df["Tahun"].astype(int)
@@ -1464,10 +1503,10 @@ with st.sidebar:
     )
     page = st.radio("Navigasi", PAGES, label_visibility="collapsed")
 
-    source = DEFAULT_DATA_PATH if DEFAULT_DATA_PATH.exists() else None
+    source = next((p for p in DATA_CANDIDATES if p.exists()), None)
     if source is None:
         st.write("")
-        source = st.file_uploader("Unggah Dataset_Sampah_Jawa_Tengah.xlsx", type=["xlsx"])
+        source = st.file_uploader("Unggah Dataset_Jawa_Tengah.xlsx", type=["xlsx"])
 
     st.markdown(
         '<div class="ww-sidebar-spacer"></div>'
@@ -1478,12 +1517,16 @@ with st.sidebar:
 
 if source is None:
     st.error(
-        "Berkas Dataset_Sampah_Jawa_Tengah.xlsx tidak ditemukan. Letakkan file tersebut di folder yang sama "
+        "Berkas Dataset_Jawa_Tengah.xlsx tidak ditemukan. Letakkan file tersebut di folder yang sama "
         "dengan app.py, atau unggah lewat panel di sidebar."
     )
     st.stop()
 
-data = compute_wastewise(source)
+try:
+    data = compute_wastewise(source)
+except DatasetError as err:
+    st.error(f"Dataset tidak sesuai format. {err}")
+    st.stop()
 
 PAGE_RENDERERS = {
     "Beranda": render_beranda,
