@@ -84,6 +84,15 @@ VAR_ID = {
     "Recycle": "anorganik daur ulang",
 }
 
+# Nama klaster mengikuti keterangan di esai (klaster diurutkan dari MR terendah, C1)
+# Dipakai hanya bila K = 4; selain itu label dibentuk otomatis dari profil z-score
+CLUSTER_NAMES = {
+    1: "Populasi tinggi, dominan sampah daur ulang, sampah tidak terkelola rendah",
+    2: "Kelompok rata-rata, timbulan dan sampah tidak terkelola rendah",
+    3: "Dominan sampah organik dari rumah tangga",
+    4: "Populasi dan timbulan sampah paling minimal",
+}
+
 KOMPOSISI_GROUP_COLORS = {
     "Organik": SAFETY_ORANGE,
     "Anorganik daur ulang": MUTED_BLUE,
@@ -415,7 +424,7 @@ def compute_wastewise(source) -> dict:
             "mr": float(df.loc[mask, "MR"].mean()),
             "tinggi": list(row[row > 0.4].sort_values(ascending=False).index),
             "rendah": list(row[row < -0.4].sort_values().index),
-            "insight": label_klaster(row),
+            "insight": CLUSTER_NAMES[int(k_)] if len(zprof) == len(CLUSTER_NAMES) else label_klaster(row),
         }
     anggota = df.pivot(index="KabKota", columns="Tahun", values="Cluster")
     anggota["Berpindah"] = anggota.nunique(axis=1) > 1
